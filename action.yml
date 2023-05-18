@@ -15,18 +15,23 @@ runs:
       run: |
         echo "Checking changes in ${{ inputs.directory }}"
         LATEST_RELEASE_HASH=$(git rev-list --tags --max-count=1 2>/dev/null || echo "")
-        if [[ -z "$LATEST_RELEASE_HASH" ]]; then
-          echo "No previous releases found. Assuming changes."
-          echo "changed=false" >> $GITHUB_OUTPUT
+        SECOND_LATEST_RELEASE_HASH=$(git rev-list --tags --skip=1 --max-count=1 2>/dev/null || echo "")
+        CURRENT_COMMIT_MSG=$(git log --format=%B -n 1)
+        if [[ ! $CURRENT_COMMIT_MSG =~ ^chore: release ]]; then
+          echo "This commit is not a release. Skipping."
+          echo "changed=false" >> $GITHUB_ENV
+        elif [[ -z "$LATEST_RELEASE_HASH" || -z "$SECOND_LATEST_RELEASE_HASH" ]]; then
+          echo "Less than two releases found. Assuming changes."
+          echo "changed=true" >> $GITHUB_ENV
         else
-          git diff --quiet $LATEST_RELEASE_HASH HEAD -- ${{ inputs.directory }}
+          git diff --quiet $SECOND_LATEST_RELEASE_HASH..$LATEST_RELEASE_HASH -- ${{ inputs.directory }} || true
           CHANGES=$?
           if [[ "$CHANGES" == "0" ]]; then
-            echo "No changes in ${{ inputs.directory }} since last release. Skipping."
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes in ${{ inputs.directory }} between last two releases. Skipping."
+            echo "changed=false" >> $GITHUB_ENV
           else
-            echo "Changes detected in ${{ inputs.directory }} since last release."
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in ${{ inputs.directory }} between last two releases."
+            echo "changed=true" >> $GITHUB_ENV
           fi
         fi
-      shell: bash
+        shell: bash
