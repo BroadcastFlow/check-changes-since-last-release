@@ -17,16 +17,16 @@ runs:
         LATEST_RELEASE_HASH=$(git rev-list --tags --max-count=1 2>/dev/null || echo "")
         if [[ -z "$LATEST_RELEASE_HASH" ]]; then
           echo "No previous releases found. Assuming changes."
-          echo "::set-output name=changed::true"
+          echo "changed=true" >> $GITHUB_OUTPUT
         else
           git diff --quiet $LATEST_RELEASE_HASH HEAD -- ${{ inputs.directory }}
           CHANGES=$?
           if [[ "$CHANGES" == "0" ]]; then
             echo "No changes in ${{ inputs.directory }} since last release. Skipping."
-            echo "::set-output name=changed::false"
+            echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "Changes detected in ${{ inputs.directory }} since last release."
-            echo "::set-output name=changed::true"
+            echo "changed=true" >> $GITHUB_OUTPUT
           fi
         fi
       shell: bash
