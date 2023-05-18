@@ -1,0 +1,18 @@
+name: 'Check Changes Since Last Release'
+description: 'Checks if there were changes in the provided directory since the last release'
+inputs:
+  directory:
+    description: 'The directory to check for changes'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - run: |
+        echo "Checking changes in ${{ inputs.directory }}"
+        LATEST_RELEASE_HASH=$(git describe --tags $(git rev-list --tags --max-count=1))
+        CHANGES=$(git diff --quiet $LATEST_RELEASE_HASH HEAD -- ${{ inputs.directory }} ; echo $?)
+        if [[ "$CHANGES" == "0" ]]; then
+          echo "No changes in ${{ inputs.directory }} since last release. Halting."
+          exit 78
+        fi
+      shell: bash
