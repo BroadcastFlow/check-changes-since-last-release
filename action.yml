@@ -34,4 +34,4 @@ runs:
             echo "changed=true" >> $GITHUB_ENV
           fi
         fi
-        shell: bash
+      shell: bash
