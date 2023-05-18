@@ -1,22 +1,26 @@
-name: 'Check Changes Since Last Release'
-description: 'Checks if there were changes in the provided directory since the last release'
+name: Check Changes Since Last Release
+description: Checks if there were changes in the provided directory since the last release
 inputs:
   directory:
-    description: 'The directory to check for changes'
+    description: The directory to check for changes
     required: true
 outputs:
   changed:
-    description: "True if the directory has changed since the last release, false otherwise"
+    description: True if the directory has changed since the last release, false otherwise
     value: ${{ steps.check-changes.outputs.changed }}
 runs:
-  using: 'composite'
+  using: composite
   steps:
     - id: check-changes
-      run: |
+      run: >
         echo "Checking changes in ${{ inputs.directory }}"
+
         LATEST_RELEASE_HASH=$(git rev-list --tags --max-count=1 2>/dev/null || echo "")
+
         SECOND_LATEST_RELEASE_HASH=$(git rev-list --tags --skip=1 --max-count=1 2>/dev/null || echo "")
+
         CURRENT_COMMIT_MSG=$(git log --format=%B -n 1)
+
         if [[ ! $CURRENT_COMMIT_MSG =~ ^chore: release ]]; then
           echo "This commit is not a release. Skipping."
           echo "changed=false" >> $GITHUB_ENV
