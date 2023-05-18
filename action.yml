@@ -21,7 +21,7 @@ runs:
 
         CURRENT_COMMIT_MSG=$(git log --format=%B -n 1)
 
-        if [[ ! ($CURRENT_COMMIT_MSG =~ "^chore" && $CURRENT_COMMIT_MSG =~ "release") ]]; then
+       if [[ ! $CURRENT_COMMIT_MSG =~ ^chore.*release ]]; then
           echo "This commit is not a release. Skipping."
           echo "changed=false" >> $GITHUB_ENV
         elif [[ -z "$LATEST_RELEASE_HASH" || -z "$SECOND_LATEST_RELEASE_HASH" ]]; then
