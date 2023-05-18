@@ -17,7 +17,7 @@ runs:
         LATEST_RELEASE_HASH=$(git rev-list --tags --max-count=1 2>/dev/null || echo "")
         if [[ -z "$LATEST_RELEASE_HASH" ]]; then
           echo "No previous releases found. Assuming changes."
-          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "changed=false" >> $GITHUB_OUTPUT
         else
           git diff --quiet $LATEST_RELEASE_HASH HEAD -- ${{ inputs.directory }}
           CHANGES=$?
