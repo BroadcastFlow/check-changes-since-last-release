@@ -11,8 +11,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Take ownership of the checkout directory (Git CVE-2022-24765)
-      run: chown --recursive --reference=/ .
     - id: check-changes
       run: >
         echo "Checking changes in ${{ inputs.directory }}"
