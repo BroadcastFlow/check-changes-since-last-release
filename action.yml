@@ -19,7 +19,7 @@ runs:
 
         SECOND_LATEST_RELEASE_HASH=$(git rev-list --tags --skip=1 --max-count=1 2>/dev/null || echo "")
 
-        CURRENT_COMMIT_MSG=$(git log --format=%B -n 1)
+        CURRENT_COMMIT_MSG=$(git log -1 --pretty=%B | tail -n 1)
         echo "Current commit message: $CURRENT_COMMIT_MSG"
 
         if [[ ! $CURRENT_COMMIT_MSG =~ ^chore.*release ]]; then
