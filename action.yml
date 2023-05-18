@@ -4,15 +4,28 @@ inputs:
   directory:
     description: 'The directory to check for changes'
     required: true
+outputs:
+  changed:
+    description: "True if the directory has changed since the last release, false otherwise"
+    value: ${{ steps.check-changes.outputs.changed }}
 runs:
   using: 'composite'
   steps:
-    - run: |
+    - id: check-changes
+      run: |
         echo "Checking changes in ${{ inputs.directory }}"
-        LATEST_RELEASE_HASH=$(git describe --tags $(git rev-list --tags --max-count=1))
-        CHANGES=$(git diff --quiet $LATEST_RELEASE_HASH HEAD -- ${{ inputs.directory }} ; echo $?)
-        if [[ "$CHANGES" == "0" ]]; then
-          echo "No changes in ${{ inputs.directory }} since last release. Halting."
-          exit 78
+        LATEST_RELEASE_HASH=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null)
+        if [[ -z "$LATEST_RELEASE_HASH" ]]; then
+          echo "No previous releases found. Assuming changes."
+          echo "::set-output name=changed::true"
+        else
+          CHANGES=$(git diff --quiet $LATEST_RELEASE_HASH HEAD -- ${{ inputs.directory }} ; echo $?)
+          if [[ "$CHANGES" == "0" ]]; then
+            echo "No changes in ${{ inputs.directory }} since last release. Skipping."
+            echo "::set-output name=changed::false"
+          else
+            echo "Changes detected in ${{ inputs.directory }} since last release."
+            echo "::set-output name=changed::true"
+          fi
         fi
       shell: bash
