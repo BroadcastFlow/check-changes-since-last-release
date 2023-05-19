@@ -7,6 +7,10 @@ inputs:
   commitMessage: # New input for commit message
     description: 'The message of the commit'
     required: true
+outputs:
+  changed:
+    description: "True if the directory has changed since the last release, false otherwise"
+    value: ${{ steps.check-changes.outputs.changed }}
 runs:
   using: composite
   steps:
