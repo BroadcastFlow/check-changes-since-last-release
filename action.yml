@@ -14,54 +14,40 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Check commit message
-      id: check_message
-      run: |
-        COMMIT_MSG="${{ inputs.commitMessage }}"
-        if [[ ! $COMMIT_MSG =~ ^chore.*release ]]; then
-          echo "Current commit message does not start with 'chore', exiting job."
-          echo "IS_CORRECT_COMMIT=false" >> $GITHUB_ENV
-          exit 0
-        else
-          echo "Current commit message starts with 'chore', proceeding with job."
-          echo "IS_CORRECT_COMMIT=true" >> $GITHUB_ENV
-        fi
-
     - id: check-changes
-      run: >
+      run: |
         echo "Checking changes in ${{ inputs.directory }}"
 
-        # Get the latest two tags
-        LATEST_TAG=$(git tag --sort=-creatordate | head -n 1)
-        PREVIOUS_TAG=$(git tag --sort=-creatordate | sed -n '2{p;q}')
-
-        echo "Latest tag: $LATEST_TAG"
-        echo "Previous tag: $PREVIOUS_TAG"
+        LATEST_TAG=$(git tag --sort=-creatordate | head -n 1 2>/dev/null || echo "")
+        PREVIOUS_TAG=$(git tag --sort=-creatordate | sed -n '2{p;q}' 2>/dev/null || echo "")
 
         CURRENT_COMMIT_MSG="${{ inputs.commitMessage }}"
-        CHANGE_FOLDER="${{ inputs.directory }}"
-        
         echo "Current commit message: $CURRENT_COMMIT_MSG"
 
-        # If no tags exist, assume no changes
-        if [ -z "$LATEST_TAG" ]; then
-            echo "No tags found, assuming no changes."
-            echo "HAS_CHANGES=false" >> $GITHUB_ENV
-        # If there's a latest tag but no previous tag, assume it has changed
-        elif [ -z "$PREVIOUS_TAG" ]; then
-            echo "Only one tag found, assuming changes."
-            echo "HAS_CHANGES=true" >> $GITHUB_ENV
+        if [[ ! $CURRENT_COMMIT_MSG =~ ^chore.*release ]]; then
+          echo "This commit is not a release. Skipping."
+          echo "::set-output name=changed::false"
+        elif [[ -z "$LATEST_TAG" ]]; then
+          echo "No tags found. Assuming no changes."
+          echo "::set-output name=changed::false"
         else
-            # Check for file changes in the specific folder between the latest two tags
-            CHANGES=$(git diff --name-only $PREVIOUS_TAG $LATEST_TAG -- "$CHANGE_FOLDER")
-
-            if [ -z "$CHANGES" ]; then
-                echo "No changes in $CHANGE_FOLDER between $PREVIOUS_TAG and $LATEST_TAG."
-                echo "HAS_CHANGES=false" >> $GITHUB_ENV
+          # Check if directory exists at the latest tag
+          DIRECTORY_EXISTS=$(git ls-tree -d $LATEST_TAG -- ${{ inputs.directory }} | wc -l)
+          if [[ "$DIRECTORY_EXISTS" == "0" ]]; then
+            echo "Directory does not exist at the latest tag. Assuming no changes."
+            echo "::set-output name=changed::false"
+          elif [[ -z "$PREVIOUS_TAG" ]]; then
+            echo "Only one tag found. Assuming changes."
+            echo "::set-output name=changed::true"
+          else
+            # Check if directory exists between the tags, if not, assume no changes
+            if git diff --quiet $PREVIOUS_TAG..$LATEST_TAG -- ${{ inputs.directory }} &>/dev/null; then
+              echo "No changes in ${{ inputs.directory }} between last two releases."
+              echo "::set-output name=changed::false"
             else
-                echo "Changes detected in $CHANGE_FOLDER between $PREVIOUS_TAG and $LATEST_TAG:"
-                echo "$CHANGES"
-                echo "HAS_CHANGES=true" >> $GITHUB_ENV
+              echo "Changes detected in ${{ inputs.directory }} between last two releases."
+              echo "::set-output name=changed::true"
             fi
+          fi
         fi
       shell: bash
