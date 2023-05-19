@@ -7,10 +7,6 @@ inputs:
   commitMessage: # New input for commit message
     description: 'The message of the commit'
     required: true
-outputs:
-  changed:
-    description: True if the directory has changed since the last release, false otherwise
-    value: ${{ steps.check-changes.outputs.changed }}
 runs:
   using: composite
   steps:
@@ -26,27 +22,36 @@ runs:
 
         if [[ ! $CURRENT_COMMIT_MSG =~ ^chore.*release ]]; then
           echo "This commit is not a release. Skipping."
-          echo "::set-output name=changed::false"
+          echo "changed=false" >> $GITHUB_OUTPUT
         elif [[ -z "$LATEST_TAG" ]]; then
           echo "No tags found. Assuming no changes."
-          echo "::set-output name=changed::false"
+          echo "changed=false" >> $GITHUB_OUTPUT
         else
-          # Check if directory exists at the latest tag
-          DIRECTORY_EXISTS=$(git ls-tree -d $LATEST_TAG -- ${{ inputs.directory }} | wc -l)
-          if [[ "$DIRECTORY_EXISTS" == "0" ]]; then
-            echo "Directory does not exist at the latest tag. Assuming no changes."
-            echo "::set-output name=changed::false"
-          elif [[ -z "$PREVIOUS_TAG" ]]; then
-            echo "Only one tag found. Assuming changes."
-            echo "::set-output name=changed::true"
-          else
-            # Check if directory exists between the tags, if not, assume no changes
-            if git diff --quiet $PREVIOUS_TAG..$LATEST_TAG -- ${{ inputs.directory }} &>/dev/null; then
-              echo "No changes in ${{ inputs.directory }} between last two releases."
-              echo "::set-output name=changed::false"
+          # Check if directory exists at the latest and previous tags
+          DIRECTORY_EXISTS_AT_LATEST=$(git ls-tree -d $LATEST_TAG -- ${{ inputs.directory }} | wc -l)
+          DIRECTORY_EXISTS_AT_PREVIOUS=$(git ls-tree -d $PREVIOUS_TAG -- ${{ inputs.directory }} | wc -l)
+
+          # If directory does not exist at the latest tag but existed at the previous tag, assume changes
+          if [[ "$DIRECTORY_EXISTS_AT_LATEST" == "0" && "$DIRECTORY_EXISTS_AT_PREVIOUS" != "0" ]]; then
+            echo "Directory existed at the previous tag but does not exist at the latest tag. Assuming changes."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          # If directory does not exist at the latest tag and did not exist at the previous tag, assume no changes
+          elif [[ "$DIRECTORY_EXISTS_AT_LATEST" == "0" && "$DIRECTORY_EXISTS_AT_PREVIOUS" == "0" ]]; then
+            echo "Directory does not exist at the latest tag or the previous tag. Assuming no changes."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          # If directory exists at the latest tag, check for changes
+          elif [[ "$DIRECTORY_EXISTS_AT_LATEST" != "0" ]]; then
+            if [[ -z "$PREVIOUS_TAG" ]]; then
+              echo "Only one tag found. Assuming changes."
+              echo "changed=true" >> $GITHUB_OUTPUT
             else
-              echo "Changes detected in ${{ inputs.directory }} between last two releases."
-              echo "::set-output name=changed::true"
+              if git diff --quiet $PREVIOUS_TAG..$LATEST_TAG -- ${{ inputs.directory }} &>/dev/null; then
+                echo "No changes in ${{ inputs.directory }} between last two releases."
+                echo "changed=false" >> $GITHUB_OUTPUT
+              else
+                echo "Changes detected in ${{ inputs.directory }} between last two releases."
+                echo "changed=true" >> $GITHUB_OUTPUT
+              fi
             fi
           fi
         fi
